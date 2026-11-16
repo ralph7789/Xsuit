@@ -572,7 +572,19 @@ app.get('/api/environment/apps', async (req, res) => {
     };
   });
 
+  const isInternalHost = host.includes('mywire.org');
+  const isXAdmin = !!(user && user.isXAdmin);
+  const dataScope = (isInternalHost && isXAdmin) ? 'internal' : 'cx';
+  const portalMode = dataScope === 'internal' ? 'INTERNAL' : 'CX';
+
   return res.json({
+    portal: {
+      mode: portalMode,
+      title: portalMode === 'INTERNAL' ? 'XCORP INDUSTRIAL HQ' : 'XCORP CLOUD WORKSPACE',
+      badge: portalMode === 'INTERNAL' ? 'INTERNAL - HQ' : 'CUSTOMER - CX',
+      description: portalMode === 'INTERNAL' ? 'Internal Control Plane & Infrastructure Management' : 'Customer Workspace & Dedicated AI Applications',
+      dataScope
+    },
     domain: {
       id: matchedDomain.id,
       hostname: matchedDomain.hostname,
@@ -603,8 +615,19 @@ app.get('/api/environment/apps', async (req, res) => {
 });
 
 app.get('/api/features', (req, res) => {
-  const features = getFeatures();
-  return res.json({ features });
+  const user = getAccessTier(req);
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'xcorp.mywire.org').split(':')[0].toLowerCase();
+  const isInternal = host.includes('mywire.org') && user.isXAdmin;
+  const allFeatures = getFeatures();
+
+  if (!isInternal) {
+    // CX scope receives only customer-safe features, strictly omitting internal SOC & infra flags
+    const internalFeatureIds = new Set(['sentinel_soc', 'nvme_telemetry', 'jules_bridge', 'xllm_studio']);
+    const cxFeatures = allFeatures.filter(f => !internalFeatureIds.has(f.id));
+    return res.json({ features: cxFeatures, scope: 'cx' });
+  }
+
+  return res.json({ features: allFeatures, scope: 'internal' });
 });
 
 app.post('/api/features/toggle', (req, res) => {

@@ -9,7 +9,7 @@ import {
   Terminal,
   Zap,
 } from 'lucide-react';
-import { ClusterStatusResponse, XidUser } from '../types';
+import { ClusterStatusResponse, XidUser, PortalScopeInfo } from '../types';
 
 interface HeroProps {
   clusterStatus: ClusterStatusResponse | null;
@@ -17,6 +17,7 @@ interface HeroProps {
   onOpenChat: () => void;
   onLoginWithXid?: () => void;
   user?: XidUser | null;
+  portalScope?: PortalScopeInfo | null;
 }
 
 export const Hero: React.FC<HeroProps> = ({
@@ -25,7 +26,10 @@ export const Hero: React.FC<HeroProps> = ({
   onOpenChat,
   onLoginWithXid,
   user,
+  portalScope,
 }) => {
+  const isCX = portalScope?.mode === 'CX';
+
   return (
     <section className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden">
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-cyan-600/20 via-blue-600/15 to-violet-600/20 blur-[130px] rounded-full pointer-events-none -z-10" />
@@ -34,25 +38,25 @@ export const Hero: React.FC<HeroProps> = ({
         <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-800/80 border border-cyan-500/30 text-slate-300 text-xs mb-8 backdrop-blur-md shadow-inner shadow-cyan-500/10 hover:border-cyan-400/50 transition-colors cursor-pointer">
           <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="font-medium text-slate-200">
-            Xcorp v2.8 Production Architecture
+            {isCX ? 'Xcorp Customer Cloud Workspace' : 'Xcorp v2.8 Production Architecture'}
           </span>
           <span className="text-slate-500">|</span>
           <span className="text-cyan-400 font-mono text-[11px]">
-            Zero-Trust WAF + Casbin Active
+            {isCX ? 'Tenant Isolated & Encrypted' : 'Zero-Trust WAF + Casbin Active'}
           </span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-[1.1]">
-          The Unified Operating System for{' '}
+          {isCX ? 'The Unified Cloud Workspace for ' : 'The Unified Operating System for '}
           <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">
-            Autonomous Intelligence
+            {isCX ? 'Autonomous Applications' : 'Autonomous Intelligence'}
           </span>
         </h1>
 
         <p className="mt-6 text-base sm:text-lg lg:text-xl text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
-          One central gateway. Infinite autonomous swarms. Secure multi-cluster
-          ingress, Casbin RBAC protection, and sub-millisecond P2P data mesh
-          running seamlessly across modern cloud infrastructure.
+          {isCX
+            ? 'Access your dedicated AI swarms, real-time messaging, and high-performance WebRTC collaboration apps in a secure, isolated tenant environment.'
+            : 'One central gateway. Infinite autonomous swarms. Secure multi-cluster ingress, Casbin RBAC protection, and sub-millisecond P2P data mesh running seamlessly across modern cloud infrastructure.'}
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">

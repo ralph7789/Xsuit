@@ -17,7 +17,7 @@ import {
   LogOut,
   User as UserIcon,
 } from 'lucide-react';
-import { AppItem, XidUser } from '../types';
+import { AppItem, XidUser, PortalScopeInfo } from '../types';
 
 interface HeaderProps {
   apps: AppItem[];
@@ -27,6 +27,7 @@ interface HeaderProps {
   onLaunchApp: (app: AppItem) => void;
   unreadCount?: number;
   user: XidUser | null;
+  portalScope?: PortalScopeInfo | null;
   onLoginWithXid: () => void;
   onLogout: () => void;
 }
@@ -39,6 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLaunchApp,
   unreadCount = 0,
   user,
+  portalScope,
   onLoginWithXid,
   onLogout,
 }) => {
@@ -182,13 +184,24 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
                 XCORP
                 <span className="text-cyan-400 font-mono text-xs ml-1 font-semibold">
-                  CORE
+                  {portalScope?.mode === 'CX' ? 'WORKSPACE' : 'CORE'}
                 </span>
               </span>
               <span className="text-[9px] uppercase tracking-widest text-slate-400 font-mono -mt-0.5">
-                Enterprise OS
+                {portalScope?.mode === 'CX' ? 'Customer Portal' : 'Enterprise HQ'}
               </span>
             </div>
+            {portalScope && (
+              <span
+                className={`hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider border ${
+                  portalScope.mode === 'INTERNAL'
+                    ? 'bg-purple-950/60 text-purple-300 border-purple-500/40'
+                    : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
+                }`}
+              >
+                {portalScope.badge}
+              </span>
+            )}
           </a>
 
           <nav className="hidden md:flex items-center space-x-1 pl-4">
@@ -204,12 +217,14 @@ export const Header: React.FC<HeaderProps> = ({
             >
               Platform Modules
             </a>
-            <a
-              href="#telemetry"
-              className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-cyan-400 hover:bg-slate-800/40 rounded-lg transition-colors"
-            >
-              Cluster Status
-            </a>
+            {portalScope?.mode !== 'CX' && (
+              <a
+                href="#telemetry"
+                className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-cyan-400 hover:bg-slate-800/40 rounded-lg transition-colors"
+              >
+                Cluster Status
+              </a>
+            )}
           </nav>
         </div>
 

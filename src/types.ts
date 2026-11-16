@@ -71,7 +71,16 @@ export interface DomainInfo {
   isPrimary: boolean;
 }
 
+export interface PortalScopeInfo {
+  mode: 'INTERNAL' | 'CX';
+  title: string;
+  badge: string;
+  description: string;
+  dataScope: 'internal' | 'cx';
+}
+
 export interface DynamicEnvironmentAppsResponse {
+  portal?: PortalScopeInfo;
   domain: DomainInfo;
   environment: EnvironmentInfo;
   availableEnvironments: EnvironmentInfo[];

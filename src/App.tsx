@@ -16,6 +16,7 @@ import {
   XidUser,
   DomainInfo,
   EnvironmentInfo,
+  PortalScopeInfo,
 } from './types';
 import { Sparkles, Lock, X, AlertTriangle, ShieldCheck } from 'lucide-react';
 
@@ -26,6 +27,7 @@ function App() {
   const [dynamicApps, setDynamicApps] = useState<AppItem[]>(APPS_CATALOG);
   const [activeEnvironment, setActiveEnvironment] = useState<EnvironmentInfo | null>(null);
   const [domainInfo, setDomainInfo] = useState<DomainInfo | null>(null);
+  const [portalScope, setPortalScope] = useState<PortalScopeInfo | null>(null);
   const [availableEnvs, setAvailableEnvs] = useState<EnvironmentInfo[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -130,6 +132,9 @@ function App() {
       }
       if (res?.data?.domain) {
         setDomainInfo(res.data.domain);
+      }
+      if (res?.data?.portal) {
+        setPortalScope(res.data.portal);
       }
       if (res?.data?.availableEnvironments) {
         setAvailableEnvs(res.data.availableEnvironments);
@@ -356,6 +361,7 @@ function App() {
         onLaunchApp={handleLaunchApp}
         unreadCount={0}
         user={xidUser}
+        portalScope={portalScope}
         onLoginWithXid={openLoginModal}
         onLogout={handleLogout}
       />
@@ -367,6 +373,7 @@ function App() {
           onOpenChat={() => setChatOpen(true)}
           onLoginWithXid={openLoginModal}
           user={xidUser}
+          portalScope={portalScope}
         />
 
         {activeEnvironment?.isReadOnly && (
@@ -407,7 +414,9 @@ function App() {
           onOpenSwitchboard={() => setSwitchboardOpen(true)}
         />
 
-        <TelemetrySection clusterStatus={clusterStatus} />
+        {(portalScope?.dataScope === 'internal' || xidUser?.isXAdmin) && (
+          <TelemetrySection clusterStatus={clusterStatus} />
+        )}
       </main>
 
       <footer className="border-t border-slate-900 bg-[#04060b] py-8 text-xs text-slate-500 font-mono">
