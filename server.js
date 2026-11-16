@@ -573,7 +573,6 @@ app.get('/api/environment/apps', async (req, res) => {
   });
 
   const isInternalHost = host.includes('mywire.org');
-  const isXAdmin = !!(user && user.isXAdmin);
   const dataScope = (isInternalHost && isXAdmin) ? 'internal' : 'cx';
   const portalMode = dataScope === 'internal' ? 'INTERNAL' : 'CX';
 
