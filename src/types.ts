@@ -43,11 +43,44 @@ export interface AppItem {
   port: number;
   iconName: string;
   badge?: string;
-  status: 'Production' | 'Live Beta' | 'Internal Service';
+  status: 'Production' | 'Live Beta' | 'Internal Service' | 'Active' | 'Read-Only';
   accentColor: string;
   features: string[];
   docPath: string;
   tier?: 'public' | 'admin';
+  versionPinned?: string;
+  isReadOnly?: boolean;
+}
+
+export interface EnvironmentInfo {
+  id: string;
+  name: string;
+  tier: string;
+  isReadOnly: boolean;
+  resourceLimits?: {
+    maxCpu: number;
+    maxMemoryMb: number;
+  };
+  dataNamespace?: string;
+}
+
+export interface DomainInfo {
+  id: string;
+  hostname: string;
+  name: string;
+  isPrimary: boolean;
+}
+
+export interface DynamicEnvironmentAppsResponse {
+  domain: DomainInfo;
+  environment: EnvironmentInfo;
+  availableEnvironments: EnvironmentInfo[];
+  user: {
+    authenticated: boolean;
+    role: string;
+    isXAdmin: boolean;
+  };
+  apps: AppItem[];
 }
 
 export interface ChatMessage {

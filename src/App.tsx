@@ -14,13 +14,19 @@ import {
   AppItem,
   ChatMessage,
   XidUser,
+  DomainInfo,
+  EnvironmentInfo,
 } from './types';
-import { Sparkles, Lock, X, AlertTriangle } from 'lucide-react';
+import { Sparkles, Lock, X, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 function App() {
   const [features, setFeatures] = useState<FeatureSwitch[]>([]);
   const [clusterStatus, setClusterStatus] =
     useState<ClusterStatusResponse | null>(null);
+  const [dynamicApps, setDynamicApps] = useState<AppItem[]>(APPS_CATALOG);
+  const [activeEnvironment, setActiveEnvironment] = useState<EnvironmentInfo | null>(null);
+  const [domainInfo, setDomainInfo] = useState<DomainInfo | null>(null);
+  const [availableEnvs, setAvailableEnvs] = useState<EnvironmentInfo[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
@@ -105,10 +111,39 @@ function App() {
     }
   };
 
+  const fetchDynamicApps = async (selectedEnvId?: string) => {
+    try {
+      const token = getStoredToken();
+      let url = '/api/environment/apps';
+      const params = new URLSearchParams();
+      if (selectedEnvId) params.set('env', selectedEnvId);
+      if (token) params.set('token', token);
+      const q = params.toString();
+      if (q) url += `?${q}`;
+
+      const res = await api.get(url);
+      if (res?.data?.apps) {
+        setDynamicApps(res.data.apps);
+      }
+      if (res?.data?.environment) {
+        setActiveEnvironment(res.data.environment);
+      }
+      if (res?.data?.domain) {
+        setDomainInfo(res.data.domain);
+      }
+      if (res?.data?.availableEnvironments) {
+        setAvailableEnvs(res.data.availableEnvironments);
+      }
+    } catch (err) {
+      console.warn('Using default apps catalog fallback', err);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       const token = getStoredToken();
       await fetchAuthUser(token);
+      await fetchDynamicApps();
 
       try {
         const featRes = await api.get('/api/features');
@@ -154,6 +189,7 @@ function App() {
         } else {
           await fetchAuthUser(res.data.token);
         }
+        await fetchDynamicApps();
         setIsLoginModalOpen(false);
         setLoginPassword('');
         setChatMessages(prev => [
@@ -192,6 +228,7 @@ function App() {
       // ignore
     }
     localStorage.removeItem('xid_token');
+    fetchDynamicApps();
     setXidUser({
       authenticated: false,
       role: 'ANONYMOUS',
@@ -312,7 +349,7 @@ function App() {
   return (
     <div className="min-h-screen bg-[#060910] text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-black">
       <Header
-        apps={APPS_CATALOG}
+        apps={dynamicApps}
         getAppUrl={getAppUrl}
         onOpenChat={() => setChatOpen(true)}
         onOpenSwitchboard={() => setSwitchboardOpen(true)}
@@ -332,11 +369,36 @@ function App() {
           user={xidUser}
         />
 
+        {activeEnvironment?.isReadOnly && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 mb-8">
+            <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-between text-amber-200 text-xs shadow-lg shadow-amber-950/20">
+              <div className="flex items-center space-x-3">
+                <ShieldCheck className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold uppercase tracking-wider text-amber-300">
+                    Audit & Compliance Read-Only Mirror Active
+                  </div>
+                  <div className="text-amber-400/80 text-[11px] mt-0.5">
+                    Environment <span className="font-mono">{activeEnvironment.name}</span> is operating under strict read-only gating. Mutating HTTP actions (POST/PUT/DELETE) are blocked with RFC 7807 problem details.
+                  </div>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold border border-amber-500/30">
+                RFC 7807 GATED
+              </span>
+            </div>
+          </div>
+        )}
+
         <AppMatrix
-          apps={APPS_CATALOG}
+          apps={dynamicApps}
           getAppUrl={getAppUrl}
           onLaunchApp={handleLaunchApp}
           user={xidUser}
+          domain={domainInfo}
+          environment={activeEnvironment}
+          availableEnvironments={availableEnvs}
+          onSelectEnvironment={envId => fetchDynamicApps(envId)}
         />
 
         <FeatureModules

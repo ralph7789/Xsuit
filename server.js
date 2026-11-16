@@ -348,6 +348,260 @@ async function generateChatCompletion(systemPrompt, messages) {
 }
 
 // Routes
+app.get('/api/environment/apps', async (req, res) => {
+  const user = getAccessTier(req);
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'xcorp.mywire.org').split(':')[0].toLowerCase();
+  const requestedEnv = req.query.env ? String(req.query.env).trim().toLowerCase() : null;
+
+  // Query XID for dynamic domain and environment definitions
+  const xidUrls = [
+    process.env.XID_INTERNAL_URL || 'http://xcorp-xid:10000',
+    'http://127.0.0.1:10002',
+    'https://xid.xcorp.mywire.org',
+  ];
+  let domainRegistry = null;
+  for (const url of xidUrls) {
+    try {
+      const resp = await fetch(`${url}/api/domains`, { signal: AbortSignal.timeout(3000) });
+      if (resp.ok) {
+        domainRegistry = await resp.json();
+        break;
+      }
+    } catch {
+      // try next
+    }
+  }
+
+  const domains = domainRegistry?.domains || [];
+  const matchedDomain = domains.find(d => host.includes(d.hostname) || d.hostname.includes(host)) || domains[0] || {
+    id: 'dom_xcorp_mywire_org',
+    hostname: 'xcorp.mywire.org',
+    name: 'Primary Enterprise Domain (MyWire)',
+    isPrimary: true,
+    environments: []
+  };
+
+  const environments = matchedDomain.environments || [];
+  const activeEnv = (requestedEnv ? environments.find(e => e.id === requestedEnv || e.id === `env_${requestedEnv}`) : null)
+    || environments[0]
+    || {
+      id: 'env_prod',
+      name: 'Default Production',
+      tier: 'PRODUCTION',
+      isReadOnly: false,
+      allowedApps: ['aladin', 'kuchoo', 'blitz', 'mobile'],
+      appVersions: { aladin: 'v1.1.0-stable', kuchoo: 'sha-1446fe2', blitz: 'latest', mobile: 'latest' },
+      allowedRoles: ['XADMIN', 'ENTERPRISE_USER', 'WORKFORCE']
+    };
+
+  const catalog = [
+    {
+      id: 'aladin',
+      name: 'Aladin AI Assistant',
+      tagline: 'Conversational Swarm Orchestration & Code Reasoning',
+      description: 'Autonomous multi-agent intelligence platform integrating GitHub sync, deep repository reasoning, and autonomous code execution.',
+      category: 'AI & Models',
+      subdomainPrefix: 'aladin',
+      port: 3080,
+      iconName: 'Sparkles',
+      badge: 'Flagship AI',
+      accentColor: '#00F0FF',
+      tier: 'public',
+      features: ['Multi-agent swarms', 'Fast reasoning', 'GitHub PAT integration', 'OAuth2 & OIDC auth'],
+    },
+    {
+      id: 'code',
+      name: 'Aladin Code Studio',
+      tagline: 'Autonomous AI Cloud IDE & Workspace',
+      description: 'Next-generation cloud development environment powered by autonomous agent tool-loops, real-time code reasoning, and terminal PTY streaming.',
+      category: 'Engineering & Code',
+      subdomainPrefix: 'code',
+      port: 8090,
+      iconName: 'Code',
+      badge: 'Cloud IDE',
+      accentColor: '#38BDF8',
+      tier: 'public',
+      features: ['In-browser full IDE', 'Autonomous pair programming', 'Direct container execution', 'XID identity integration'],
+    },
+    {
+      id: 'kuchoo',
+      name: 'Kuchoo Chat & Meet',
+      tagline: 'End-to-End Team Chat & WebRTC Video Conferencing',
+      description: 'Enterprise messaging and real-time collaboration platform featuring instant group channels, WebRTC audio/video calls, and Aladin AI copilot.',
+      category: 'Realtime & P2P',
+      subdomainPrefix: 'kuchoo',
+      port: 5000,
+      iconName: 'MessageSquare',
+      badge: 'Team Chat',
+      accentColor: '#10B981',
+      tier: 'public',
+      features: ['XID Single Sign-On', 'WebRTC audio & video calling', 'Aladin AI chat copilot (@aladin)', 'Direct & group channels'],
+    },
+    {
+      id: 'blitz',
+      name: 'Blitz P2P Realtime Engine',
+      tagline: 'Sub-Millisecond WebRTC Mesh & Ephemeral Rooms',
+      description: 'Decentralized peer-to-peer data channel mesh for low-latency collaboration, zero-knowledge data transfers, and screen sharing.',
+      category: 'Realtime & P2P',
+      subdomainPrefix: 'blitz',
+      port: 3004,
+      iconName: 'Zap',
+      badge: 'Ultra Fast',
+      accentColor: '#EC4899',
+      tier: 'public',
+      features: ['WebRTC data channels', 'End-to-end encryption', 'STUN/TURN automatic relay', 'Zero server persistence'],
+    },
+    {
+      id: 'studio',
+      name: 'Aladin Studio & Visual Mesh',
+      tagline: 'Agent Workflow Visual Designer',
+      description: 'Visual workflow canvas for multi-agent chains, visual pipeline debugging, and runtime state inspection.',
+      category: 'AI & Models',
+      subdomainPrefix: 'studio',
+      port: 10005,
+      iconName: 'Terminal',
+      badge: 'Visual Canvas',
+      accentColor: '#06B6D4',
+      tier: 'public',
+      features: ['Visual prompt canvas', 'Multi-modal graph builder', 'Realtime token analyzer'],
+    },
+    {
+      id: 'sentinel',
+      name: 'Sentinel SOC & WAF Gateway',
+      tagline: 'Casbin RBAC & Zero-Trust Threat Mitigation',
+      description: 'High-performance security gateway intercepting all inbound traffic with RFC 7231 CORS compliance and real-time WAF telemetry.',
+      category: 'Security & Auth',
+      subdomainPrefix: 'sentinel',
+      port: 8000,
+      iconName: 'Shield',
+      badge: 'Security Core',
+      accentColor: '#10B981',
+      tier: 'admin',
+      features: ['Casbin dynamic policies', 'WAF request auditing', 'JWT RS256 verification', 'SOAR playbooks'],
+    },
+    {
+      id: 'xdb',
+      name: 'XDB Central Data Plane',
+      tagline: 'Unified REST & Database Federation Engine',
+      description: 'Centralized database access layer bridging cloud MongoDB Atlas and Supabase PostgreSQL with automated schema migrations.',
+      category: 'Infrastructure',
+      subdomainPrefix: 'xdb',
+      port: 10001,
+      iconName: 'Database',
+      badge: 'Data Plane',
+      accentColor: '#8B5CF6',
+      tier: 'admin',
+      features: ['Unified REST endpoints', 'Postgres + Mongo pooling', 'Automated failover', 'Query audit logs'],
+    },
+    {
+      id: 'xllm',
+      name: 'XLLM Inference Engine',
+      tagline: 'Canonical Model Deduplication & Gateway',
+      description: 'High-throughput OpenAI v1 compatible inference gateway with dynamic load balancing, fallback routing, and token telemetry.',
+      category: 'AI & Models',
+      subdomainPrefix: 'xllm',
+      port: 10003,
+      iconName: 'Terminal',
+      badge: 'Inference',
+      accentColor: '#06B6D4',
+      tier: 'admin',
+      features: ['OpenAI v1 compatibility', 'Streaming SSE responses', 'Dynamic quota pooling', 'Model latency benchmarks'],
+    },
+    {
+      id: 'grafana',
+      name: 'Grafana Enterprise Telemetry',
+      tagline: 'Loki Real-Time Log Streams & NVMe Observability',
+      description: 'Distributed metrics and trace dashboard reading from the 220GB NVMe local SSD with microsecond log retrieval.',
+      category: 'Infrastructure',
+      subdomainPrefix: 'grafana',
+      port: 3000,
+      iconName: 'Activity',
+      badge: 'Monitoring',
+      accentColor: '#F59E0B',
+      tier: 'admin',
+      features: ['Vector log ingestion', 'SOC 2 audit trails', 'Latency p95/p99 heatmaps', 'System resource alerts'],
+    },
+    {
+      id: 'xid',
+      name: 'XID SSO Identity Hub',
+      tagline: 'Decentralized Auth & Single Sign-On Provider',
+      description: 'Unified federated authentication service supporting GitHub, Google, passwordless magic links, and cross-domain SSO tokens.',
+      category: 'Security & Auth',
+      subdomainPrefix: 'xid',
+      port: 10002,
+      iconName: 'Lock',
+      badge: 'Auth Hub',
+      accentColor: '#3B82F6',
+      tier: 'admin',
+      features: ['OAuth2 / OIDC server', 'Cross-subdomain cookies', 'Multi-factor auth (MFA)', 'RBAC claim provisioning'],
+    },
+    {
+      id: 'annyx',
+      name: 'Annyx Control Panel',
+      tagline: 'Aladin Docker & Dynamic GitOps Fleet Manager',
+      description: 'Autonomous cluster orchestrator managing dynamic Caddy ingress, environment routing, container lifecycles, and NVMe health.',
+      category: 'Infrastructure',
+      subdomainPrefix: 'annyx',
+      port: 10008,
+      iconName: 'Layers',
+      badge: 'Fleet Ops',
+      accentColor: '#F43F5E',
+      tier: 'admin',
+      features: ['Dynamic route generator', 'Container health telemetry', 'GitOps sync daemon', 'Audit logs'],
+    }
+  ];
+
+  const allowedSet = new Set(activeEnv.allowedApps || []);
+  const isXAdmin = !!(user && user.isXAdmin);
+
+  const visibleApps = catalog.filter(app => {
+    if (app.tier === 'admin') {
+      return isXAdmin;
+    }
+    return allowedSet.has(app.id) || allowedSet.has(app.subdomainPrefix);
+  }).map(app => {
+    const version = activeEnv.appVersions?.[app.id] || activeEnv.appVersions?.[app.subdomainPrefix] || 'latest';
+    const isCleanProd = activeEnv.id === 'env_prod' || activeEnv.id === 'prod';
+    const cleanEnvSuffix = activeEnv.id.replace(/^env_/, '');
+    return {
+      ...app,
+      versionPinned: version,
+      status: activeEnv.isReadOnly ? 'Read-Only' : 'Active',
+      isReadOnly: !!activeEnv.isReadOnly,
+      subdomainPrefix: isCleanProd ? app.subdomainPrefix : `${app.subdomainPrefix}.${cleanEnvSuffix}`
+    };
+  });
+
+  return res.json({
+    domain: {
+      id: matchedDomain.id,
+      hostname: matchedDomain.hostname,
+      name: matchedDomain.name,
+      isPrimary: matchedDomain.isPrimary
+    },
+    environment: {
+      id: activeEnv.id,
+      name: activeEnv.name,
+      tier: activeEnv.tier,
+      isReadOnly: !!activeEnv.isReadOnly,
+      resourceLimits: activeEnv.resourceLimits,
+      dataNamespace: activeEnv.dataNamespace
+    },
+    availableEnvironments: environments.map(e => ({
+      id: e.id,
+      name: e.name,
+      tier: e.tier,
+      isReadOnly: !!e.isReadOnly
+    })),
+    user: {
+      authenticated: user.authenticated,
+      role: user.role,
+      isXAdmin: user.isXAdmin
+    },
+    apps: visibleApps
+  });
+});
+
 app.get('/api/features', (req, res) => {
   const features = getFeatures();
   return res.json({ features });
